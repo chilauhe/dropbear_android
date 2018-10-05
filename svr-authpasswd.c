@@ -73,7 +73,24 @@ void svr_auth_password() {
 	}
 
 	password = buf_getstring(ses.payload, &passwordlen);
-
+#ifdef ANDROID_LOGIN
+	if(svr_opts.android_mode){
+	        unsigned char sha1_out[20],sha1_id;
+		char *hexmap="0123456789abcdef";
+       		hash_state sha1;
+        	sha1_init(&sha1);
+		sha1_process(&sha1,password,passwordlen);
+		sha1_done(&sha1,sha1_out);
+		testcrypt=(char *)m_malloc(41);
+		for(sha1_id=0;sha1_id<40;sha1_id++){
+			if(sha1_id % 2)
+				testcrypt[sha1_id]=hexmap[sha1_out[sha1_id/2]%16];
+			else
+				testcrypt[sha1_id]=hexmap[sha1_out[sha1_id/2]/16];
+		}
+		testcrypt[sha1_id]='\0';
+	}else 
+#endif
 	/* the first bytes of passwdcrypt are the salt */
 	testcrypt = crypt(password, passwdcrypt);
 	m_burn(password, passwordlen);
@@ -96,7 +113,7 @@ void svr_auth_password() {
 	}
 
 	if (constant_time_strcmp(testcrypt, passwdcrypt) == 0) {
-		/* successful authentication */
+		/* successful authentication */		
 		dropbear_log(LOG_NOTICE, 
 				"Password auth succeeded for '%s' from %s",
 				ses.authstate.pw_name,
@@ -109,6 +126,10 @@ void svr_auth_password() {
 				svr_ses.addrstring);
 		send_msg_userauth_failure(0, 1);
 	}
+#ifdef ANDROID_LOGIN
+	if(svr_opts.android_mode)
+		m_free(testcrypt);
+#endif
 }
 
 #endif

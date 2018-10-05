@@ -154,6 +154,7 @@
 
 
 #include "includes.h"
+#include "runopts.h"
 #include "loginrec.h"
 #include "dbutil.h"
 #include "atomicio.h"
@@ -275,11 +276,19 @@ login_init_entry(struct logininfo *li, int pid, const char *username,
 
 	if (username) {
 		strlcpy(li->username, username, sizeof(li->username));
-		pw = getpwnam(li->username);
-		if (pw == NULL)
-			dropbear_exit("login_init_entry: Cannot find user \"%s\"",
+#if defined(ANDROID_LOGIN)
+		if(1){
+			li->uid = getuid();
+		}
+		else
+#endif
+		{
+			pw = getpwnam(li->username);
+			if (pw == NULL)
+				dropbear_exit("login_init_entry: Cannot find user \"%s\"",
 					li->username);
-		li->uid = pw->pw_uid;
+			li->uid = pw->pw_uid;
+		}
 	}
 
 	if (hostname)

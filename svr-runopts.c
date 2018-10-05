@@ -100,6 +100,12 @@ static void printhelp(const char * progname) {
 					"-K <keepalive>  (0 is never, default %d, in seconds)\n"
 					"-I <idle_timeout>  (0 is never, default %d, in seconds)\n"
 					"-V    Version\n"
+#ifdef ANDROID_LOGIN
+					"-A Android Mode, specify a user explicitly\n"
+					"-N Android Mode, username\n"
+					"-C Android Mode, sha1 encoded password\n"
+					"-T Android Mode, public key file (authorized_keys)\n"   
+#endif
 #if DEBUG_TRACE
 					"-v		verbose (compiled with DEBUG_TRACE)\n"
 #endif
@@ -155,6 +161,13 @@ void svr_getopts(int argc, char ** argv) {
 #endif
 #if DROPBEAR_SVR_REMOTETCPFWD
 	svr_opts.noremotetcp = 0;
+#endif
+
+#ifdef ANDROID_LOGIN
+	svr_opts.android_mode = 0;
+	svr_opts.android.username = NULL;
+	svr_opts.android.passwd = NULL;
+	svr_opts.android.authkey = NULL;
 #endif
 
 #ifndef DISABLE_ZLIB
@@ -274,6 +287,21 @@ void svr_getopts(int argc, char ** argv) {
 				case 'u':
 					/* backwards compatibility with old urandom option */
 					break;
+#ifdef ANDROID_LOGIN
+				case 'A':
+					svr_opts.android_mode = 1;
+					break;
+				case 'N':
+					next = &svr_opts.android.username;
+					break;
+				case 'C':
+					next = &svr_opts.android.passwd;
+					break;
+				case 'U':
+					next = &svr_opts.android.authkey;
+					break;
+#endif
+
 #if DEBUG_TRACE
 				case 'v':
 					debug_trace = 1;

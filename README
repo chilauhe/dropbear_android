@@ -1,6 +1,27 @@
 This is Dropbear, a smallish SSH server and client.
 https://matt.ucc.asn.au/dropbear/dropbear.html
 
+----------------------------------------------------
+Modified version for android by Chilau He.
+* specify username and password in command line
+* sha1 encoded password instead of plaintext
+* preserve environment variables in android
+
+my configure option:
+./configure --disable-syslog --enable-bundled-libtom \
+	 --disable-utmp --disable-lastlog --disable-wtmp \
+	 --disable-loginfunc --prefix=/system --enable-static \
+	 --localstatedir=/data/local/tmp --sbindir=/system/xbin \
+	 --disable-pam --disable-utmpx --disable-wtmpx \
+	 --libexecdir=/system/sbin 
+toolchain: arm-linux-gnueabi
+
+usage examples: 
+  get encoded password: echo $(echo -n "password" | sha1sum | grep -oE '^[a-z0-9]+')
+  run dropbear with username/password =  root/pass123 : 
+   dropbear -R -p 2299 -A -N root -C $(echo -n $(echo -n "pass123" | sha1sum | grep -oE '^[a-z0-9]+'))
+----------------------------------------------------
+
 INSTALL has compilation instructions.
 
 MULTI has instructions on making a multi-purpose binary (ie a single binary

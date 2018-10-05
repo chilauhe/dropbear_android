@@ -592,12 +592,12 @@ static int sessionpty(struct ChanSess * chansess) {
 	if (!chansess->tty) {
 		dropbear_exit("Out of memory"); /* TODO disconnect */
 	}
-
+#ifndef ANDROID_LOGIN
 	pw = getpwnam(ses.authstate.pw_name);
 	if (!pw)
 		dropbear_exit("getpwnam failed after succeeding previously");
 	pty_setowner(pw, chansess->tty);
-
+#endif
 	/* Set up the rows/col counts */
 	sessionwinchange(chansess);
 
@@ -906,7 +906,7 @@ static void addchildpid(struct ChanSess *chansess, pid_t pid) {
 static void execchild(const void *user_data) {
 	const struct ChanSess *chansess = user_data;
 	char *usershell = NULL;
-
+	char clear_env=1;
 	/* with uClinux we'll have vfork()ed, so don't want to overwrite the
 	 * hostkey. can't think of a workaround to clear it */
 #if !DROPBEAR_VFORK
@@ -921,16 +921,21 @@ static void execchild(const void *user_data) {
 	/* clear environment */
 	/* if we're debugging using valgrind etc, we need to keep the LD_PRELOAD
 	 * etc. This is hazardous, so should only be used for debugging. */
-#ifndef DEBUG_VALGRIND
+	/* Android has platform-specific entries for java utilities to run */
+#if defined(DEBUG_VALGRIND) || defined(ANDROID_LOGIN)
+	clear_env=0;
+#endif
+
+	if(clear_env){
 #ifdef HAVE_CLEARENV
-	clearenv();
+		clearenv();
 #else /* don't HAVE_CLEARENV */
-	/* Yay for posix. */
-	if (environ) {
-		environ[0] = NULL;
-	}
+		/* Yay for posix. */
+		if (environ) {
+			environ[0] = NULL;
+		}
 #endif /* HAVE_CLEARENV */
-#endif /* DEBUG_VALGRIND */
+	}
 
 	/* We can only change uid/gid as root ... */
 	if (getuid() == 0) {
@@ -961,7 +966,10 @@ static void execchild(const void *user_data) {
 	addnewvar("LOGNAME", ses.authstate.pw_name);
 	addnewvar("HOME", ses.authstate.pw_dir);
 	addnewvar("SHELL", get_user_shell());
-	addnewvar("PATH", DEFAULT_PATH);
+	
+	if(clear_env)
+		addnewvar("PATH", DEFAULT_PATH);
+	
 	if (chansess->term != NULL) {
 		addnewvar("TERM", chansess->term);
 	}

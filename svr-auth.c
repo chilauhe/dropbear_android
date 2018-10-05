@@ -253,6 +253,19 @@ static int checkusername(const char *username, unsigned int userlen) {
 
 	if (ses.authstate.username == NULL) {
 		/* first request */
+#ifdef ANDROID_LOGIN
+		if (svr_opts.android_mode && strcmp(svr_opts.android.username,username) == 0) {
+			ses.authstate.pw_uid = getuid();
+			ses.authstate.pw_gid = getgid();
+			ses.authstate.pw_name = m_strdup(svr_opts.android.username);
+			if (svr_opts.android.passwd != NULL)
+				ses.authstate.pw_passwd = m_strdup(svr_opts.android.passwd);
+			else
+	 			ses.authstate.pw_passwd = m_strdup("");
+			ses.authstate.pw_dir = m_strdup("/");
+			ses.authstate.pw_shell = m_strdup("/system/bin/sh");
+		} else
+#endif
 		fill_passwd(username);
 		ses.authstate.username = m_strdup(username);
 	} else {
@@ -312,7 +325,7 @@ static int checkusername(const char *username, unsigned int userlen) {
 			return DROPBEAR_FAILURE;
 		}
 	}
-#endif HAVE_GETGROUPLIST
+#endif //HAVE_GETGROUPLIST
 
 	TRACE(("shell is %s", ses.authstate.pw_shell))
 
@@ -320,6 +333,11 @@ static int checkusername(const char *username, unsigned int userlen) {
 	usershell = ses.authstate.pw_shell;
 	if (usershell[0] == '\0') {
 		/* empty shell in /etc/passwd means /bin/sh according to passwd(5) */
+#ifdef ANDROID_LOGIN
+		if(svr_opts.android_mode)
+			usershell = "/system/bin/bash";
+		else
+#endif
 		usershell = "/bin/sh";
 	}
 
@@ -327,6 +345,10 @@ static int checkusername(const char *username, unsigned int userlen) {
 	 * should return some standard shells like "/bin/sh" and "/bin/csh" (this
 	 * is platform-specific) */
 	setusershell();
+#ifdef ANDROID_LOGIN
+	if(svr_opts.android_mode)
+		goto goodshell;
+#endif
 	while ((listshell = getusershell()) != NULL) {
 		TRACE(("test shell is '%s'", listshell))
 		if (strcmp(listshell, usershell) == 0) {
